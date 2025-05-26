@@ -89,9 +89,10 @@ class LayersBar:
 
     def change_layer_color(self):
         idx = self.layer_menu_idx
-        name = self.list.get(idx)
-        bg_color = colorchooser.askcolor(title=f"Select Color for {name}")
-        self.list.itemconfig(self.layer_menu_idx,bg=bg_color[1])
+        layer = self.list.get(idx)
+        rgb, bg_color = colorchooser.askcolor(title=f"Select Color for {layer}")
+        self.list.itemconfig(idx,bg=bg_color)
+        self.layers[layer].bg_color = bg_color
         return True
 
     def change_layer_name(self):
