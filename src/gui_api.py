@@ -50,8 +50,8 @@ class Layer:
     def rect_exists(self, x: int, y: int):
         id  = None
         for rect in self.rects.values():
-            in_x = (x >= rect.x1 and x <= rect.x2) or (x <= rect.x1 and x >= rect.x2)
-            in_y = (y >= rect.y1 and y <= rect.y2) or (y <= rect.y1 and x >= rect.y2)
+            in_x = (x >= rect.x1 and x <= rect.x2)
+            in_y = (y >= rect.y1 and y <= rect.y2)
             if in_x and in_y:
                 id = rect.id
         return id
@@ -170,7 +170,7 @@ class LayersBar:
         return "#" + color
 
     def delete_layer(self, idx: int=-1, del_cursor: bool=True):
-        # if a layer is selected, delete it
+        # delete what is selected or by idx?
         end_idx = self.list.index(tk.END)
         if del_cursor:
             try: idx = self.list.curselection()[0]
@@ -180,9 +180,17 @@ class LayersBar:
             # nothing to delete... do nothing
             return True
         
-        name = self.list.get(idx)
-        if idx >= 0 and idx <= end_idx and name != "":
-            del self.layers[name]
+        # delete the target layer (and its associated geometry)
+        layer = self.list.get(idx)
+        if idx >= 0 and idx <= end_idx and layer != "":
+            rect_ids = list(self.layers[layer].rects.keys())
+            if len(rect_ids) > 0:
+                response = messagebox.askquestion("Deleting Layer","Are you sure you want to delete this populated layer?")
+                if response == "no":
+                    return
+            for id in rect_ids:
+                self.root.delete(id)
+            del self.layers[layer]
             self.list.delete(idx)
         elif idx < 0 or idx > end_idx:
             print(f"Error: Invalid idx in LayersBar.delete_layer()... idx = {idx} last index = {end_idx}")
@@ -243,6 +251,12 @@ class LayersBar:
         self.layers[layer].toggle_hide()
         text_color = self.layers[layer].text_colors()[0]
         self.list.itemconfig(idx,fg=text_color)
+
+        # hide/reveal any rectangles in the layer
+        rect_ids = list(self.layers[layer].rects.keys())
+        layer_state = "hidden" if self.layers[layer].is_hidden() else "normal"
+        for id in rect_ids:
+            self.root.itemconfigure(id,state=layer_state)
         return True
 
 class MenuBar:
@@ -299,6 +313,11 @@ class Window:
         self.root.mainloop()
 
     def create_rect(self, layer: str, x1: int, y1: int, x2: int, y2: int, color: str):
+        if x1 > x2:
+            x1, x2 = x2, x1
+        if y1 > y2:
+            y1, y2 = y2, y1
+
         id = self.canvas.create_rectangle(x1,y1,
                                           x2,y2,
                                           fill=color,
@@ -334,4 +353,5 @@ class Window:
                                  layer_color)
                 self.B1_clicked = False
         elif event.num == 3: # Else if it was a right click...
+            self.B1_clicked = False
             self.delete_rect(layer,event.x,event.y)
