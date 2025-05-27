@@ -2,13 +2,41 @@ import tkinter as tk
 from tkinter import colorchooser, simpledialog, messagebox
 import random as r
 
+def is_hex(str):
+    try:
+        int(str, 16)
+        return True
+    except:
+        return False
+
+class Rectangle:
+    def __init__(self, x1: int, y1: int, x2: int, y2: int, id: int, color: str):        
+        if color[0] != '#' or len(color) != 7 or not is_hex(color[1:]):
+            raise ValueError("Rectangle.color must be in the folowing format: #XXXXXX (X = hex-digit)")
+
+        self.x1 = x1
+        self.y1 = y1
+        self.x2 = x2
+        self.y2 = y2
+        self.id = id
+        self.color = color
+
+        # TODO Implement ability to change rect color
+        #def change_color(self):
+
 class Layer:
     def __init__(self, name: str, bg_color: str="#FFFFFF", layer_hidden: bool=False):
+        if bg_color[0] != '#' or len(bg_color) != 7 or not is_hex(bg_color[1:]):
+            raise ValueError("Rectangle.color must be in the folowing format: #XXXXXX (X = hex-digit)")
+        
         self.name = name
         self.bg_color = bg_color
         self.text_color = "black" if not layer_hidden else "lightgrey"
         self.layer_hidden = layer_hidden
 
+        self.rects = {}
+
+    # TODO Implement rectangle hiding here
     def toggle_hide(self):
         self.text_color = "black" if self.layer_hidden else "lightgrey"
         self.layer_hidden = not self.layer_hidden
@@ -18,6 +46,22 @@ class Layer:
     
     def is_hidden(self):
         return self.layer_hidden
+    
+    def rect_exists(self, x: int, y: int):
+        id  = None
+        for rect in self.rects.values():
+            in_x = (x >= rect.x1 and x <= rect.x2) or (x <= rect.x1 and x >= rect.x2)
+            in_y = (y >= rect.y1 and y <= rect.y2) or (y <= rect.y1 and x >= rect.y2)
+            if in_x and in_y:
+                id = rect.id
+        return id
+
+    def add_rect(self, x1: int, y1: int, x2: int, y2: int, id: int):
+        rect = Rectangle(x1,y1,x2,y2,id,self.bg_color)
+        self.rects.update({id : rect})
+
+    def del_rect(self, id: int):
+        del self.rects[id]
 
 class LayersBar:
     def __init__(self, root):
@@ -87,6 +131,7 @@ class LayersBar:
         else:
             return False
 
+    # TODO Implement ability to change canvas rect color as well
     def change_layer_color(self):
         idx = self.layer_menu_idx
         layer = self.list.get(idx)
@@ -145,7 +190,6 @@ class LayersBar:
         else:
             print(f"Error: Empty name in LayersBar.delete_layer()...")
             return False
-
     
     def add_layer(self, idx=-1, name: str="", bg_color: str="", hidden_status: bool=False):
         # make sure layer name is not taken
@@ -211,7 +255,6 @@ class MenuBar:
         # file sub-menu
         self.file = tk.Menu(self.menu,tearoff=0,relief=tk.RAISED)
         self.menu.add_cascade(label="File",menu=self.file)
-        self.file.add_command(label="Open") #,command=openFile)
         self.file.add_command(label="Save")
         self.file.add_separator()
         self.file.add_command(label="Exit",command=quit)
@@ -227,3 +270,68 @@ class MenuBar:
         # view sub-menu
         self.view = tk.Menu(self.menu,tearoff=0,relief=tk.RAISED)
         self.menu.add_cascade(label="View",menu=self.view)
+
+class Window:
+    def __init__(self):
+        # instantiate main window
+        self.root = tk.Tk()
+        self.root.title("Photolithography Tool")
+        self.root.geometry("1000x600")
+        self.root.minsize(500,500)
+
+        # window icon
+        self.logo = tk.PhotoImage(file='img/burger.png')
+        self.root.iconphoto(False, self.logo)
+
+        # populate main window
+        self.menubar = MenuBar(self.root)
+        self.canvas = tk.Canvas(self.root,width=800,height=600,bg="white")
+        self.layersbar = LayersBar(self.canvas)
+        self.canvas.bind("<Button>",self.canvas_click)
+        self.canvas.pack(fill="both",expand=True)
+
+        # variables for control
+        self.B1_clicked = False
+        self.B1_click_x = 0
+        self.B1_click_y = 0
+
+    def mainloop(self):
+        self.root.mainloop()
+
+    def create_rect(self, layer: str, x1: int, y1: int, x2: int, y2: int, color: str):
+        id = self.canvas.create_rectangle(x1,y1,
+                                          x2,y2,
+                                          fill=color,
+                                          outline="black")
+        self.layersbar.layers[layer].add_rect(x1,y1,
+                                              x2,y2,
+                                              id)
+        
+    def delete_rect(self, layer: str, x: int, y: int):
+        rect_id = self.layersbar.layers[layer].rect_exists(x,y)
+        if rect_id != None:
+            self.canvas.delete(rect_id)
+            self.layersbar.layers[layer].del_rect(rect_id)
+
+    def canvas_click(self, event):
+        try: layer_idx = self.layersbar.list.curselection()[0]
+        except: return # if no layer is selected, do nothing
+
+        layer = self.layersbar.list.get(layer_idx)
+        layer_color = self.layersbar.list.itemcget(layer_idx,"bg")
+
+        if event.num == 1: # If it was a left click...
+            if self.B1_clicked == False:
+                self.B1_click_x = event.x
+                self.B1_click_y = event.y
+                self.B1_clicked = True
+            else:
+                self.create_rect(layer,
+                                 self.B1_click_x,
+                                 self.B1_click_y,
+                                 event.x,
+                                 event.y,
+                                 layer_color)
+                self.B1_clicked = False
+        elif event.num == 3: # Else if it was a right click...
+            self.delete_rect(layer,event.x,event.y)
