@@ -21,8 +21,11 @@ class Rectangle:
         self.id = id
         self.color = color
 
-        # TODO Implement ability to change rect color
-        #def change_color(self):
+    def change_color(self, color: str):
+        if color[0] != '#' or len(color) != 7 or not is_hex(color[1:]):
+            raise ValueError("Rectangle.color must be in the folowing format: #XXXXXX (X = hex-digit)")
+        
+        self.color = color
 
 class Layer:
     def __init__(self, name: str, bg_color: str="#FFFFFF", layer_hidden: bool=False):
@@ -61,6 +64,9 @@ class Layer:
 
     def del_rect(self, id: int):
         del self.rects[id]
+
+    def color_rect(self, id: int, color: str):
+        self.rects[id].change_color(color)
 
 class LayersBar:
     def __init__(self, root):
@@ -130,7 +136,6 @@ class LayersBar:
         else:
             return False
 
-    # TODO Implement ability to change canvas rect color as well
     def change_layer_color(self):
         # Ask for desired color
         idx = self.layer_menu_idx
@@ -145,6 +150,7 @@ class LayersBar:
         rect_ids = list(self.layers[layer].rects.keys())
         for id in rect_ids:
             self.root.itemconfigure(id,fill=bg_color)
+            self.layers[layer].color_rect(id, bg_color)
         return True
 
     def change_layer_name(self):
@@ -153,7 +159,7 @@ class LayersBar:
         bg_color = self.list.itemcget(idx,"background")
         hidden_status = self.layers[old_name].is_hidden()
 
-        new_name = simpledialog.askstring("Input", f"New name for {old_name}")
+        new_name = simpledialog.askstring("Rename Layer", f"Type a new name for {old_name}")
 
         if new_name in self.list.get(0,tk.END) and new_name != old_name:
             messagebox.showerror("Layer Rename Error","Error: Layer name already exists!")
@@ -279,18 +285,6 @@ class MenuBar:
         self.file.add_command(label="Save")
         self.file.add_separator()
         self.file.add_command(label="Exit",command=quit)
-
-        # TODO Add Edit sub-menus
-        # TODO Add functionality for Edit sub-menus
-        # edit sub-menu
-        self.edit = tk.Menu(self.menu,tearoff=0,relief=tk.RAISED)
-        self.menu.add_cascade(label="Edit",menu=self.edit)
-
-        # TODO Add View sub-menus
-        # TODO Add functionality for View sub-menus
-        # view sub-menu
-        self.view = tk.Menu(self.menu,tearoff=0,relief=tk.RAISED)
-        self.menu.add_cascade(label="View",menu=self.view)
 
 class Window:
     def __init__(self):
