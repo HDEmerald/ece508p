@@ -36,7 +36,6 @@ class Layer:
 
         self.rects = {}
 
-    # TODO Implement rectangle hiding here
     def toggle_hide(self):
         self.text_color = "black" if self.layer_hidden else "lightgrey"
         self.layer_hidden = not self.layer_hidden
@@ -133,11 +132,19 @@ class LayersBar:
 
     # TODO Implement ability to change canvas rect color as well
     def change_layer_color(self):
+        # Ask for desired color
         idx = self.layer_menu_idx
         layer = self.list.get(idx)
         rgb, bg_color = colorchooser.askcolor(title=f"Select Color for {layer}")
+
+        # change layer color
         self.list.itemconfig(idx,bg=bg_color)
         self.layers[layer].bg_color = bg_color
+
+        # change layers geometry color too
+        rect_ids = list(self.layers[layer].rects.keys())
+        for id in rect_ids:
+            self.root.itemconfigure(id,fill=bg_color)
         return True
 
     def change_layer_name(self):
@@ -152,12 +159,13 @@ class LayersBar:
             messagebox.showerror("Layer Rename Error","Error: Layer name already exists!")
             return False
         elif new_name is not None:
+            # add renamed entry
+            self.add_layer(idx,new_name,bg_color,hidden_status)
+            # move rects to new layer entry
+            self.layers[new_name].rects = self.layers[old_name].rects
             # delete old entry
             del self.layers[old_name]
-            self.list.delete(idx)
-            # add renamed entry
-            if self.add_layer(idx,new_name,bg_color,hidden_status):
-                return True
+            self.list.delete(idx+1)
         else:
             # simply no change to layer name
             return True
@@ -239,7 +247,6 @@ class LayersBar:
 
         return True
 
-    # TODO Add layer hiding functionality
     def hide_layer(self):
         # if a layer is not selected, exit with no changes
         idx = self.list.curselection()
