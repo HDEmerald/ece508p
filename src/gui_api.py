@@ -1,5 +1,7 @@
 import tkinter as tk
-from tkinter import colorchooser, simpledialog, messagebox
+from tkinter import colorchooser, simpledialog, messagebox, filedialog
+from PIL import Image
+import os
 import random as r
 
 def is_hex(str):
@@ -273,18 +275,29 @@ class LayersBar:
         return True
 
 class MenuBar:
-    def __init__(self, root):
+    def __init__(self, root, canvas):
         self.root = root
+        self.canvas = canvas
         self.menu = tk.Menu(root,relief=tk.FLAT,bg="white")
         self.root.config(menu=self.menu)
         
-        # TODO Add functionality for File sub-menus
         # file sub-menu
         self.file = tk.Menu(self.menu,tearoff=0,relief=tk.RAISED)
         self.menu.add_cascade(label="File",menu=self.file)
-        self.file.add_command(label="Save")
+        self.file.add_command(label="Save",command=self.save)
         self.file.add_separator()
         self.file.add_command(label="Exit",command=quit)
+
+    def save(self):
+        filepath = filedialog.asksaveasfilename(defaultextension=".png",
+                                                filetypes=[("PNG files","*.png")])
+        eps_path = filepath.replace(".png",".eps")
+        self.canvas.postscript(file=eps_path)
+        img = Image.open(eps_path)
+        img.save(filepath)
+        response = messagebox.askquestion("Keep .eps File?","Do you want to keep the .eps file?")
+        if response == "no":
+            os.remove(eps_path)
 
 class Window:
     def __init__(self):
@@ -299,8 +312,8 @@ class Window:
         self.root.iconphoto(False, self.logo)
 
         # populate main window
-        self.menubar = MenuBar(self.root)
         self.canvas = tk.Canvas(self.root,width=800,height=600,bg="white")
+        self.menubar = MenuBar(self.root,self.canvas)
         self.layersbar = LayersBar(self.canvas)
         self.canvas.bind("<Button>",self.canvas_click)
         self.canvas.pack(fill="both",expand=True)
